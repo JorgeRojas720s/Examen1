@@ -40,67 +40,78 @@ async function getAll() {
 
 async function getById(id) {
   console.log("Probannndo");
-  return await User.findOne({ id: id }); 
+  return await User.findOne({ id: id });
 }
 
-async function create(params) {
-  // validate
+async function userAlredyExists(params) { //el usuario ya exite
   if (await User.findOne({ id: params.id })) {
     throw {
-      message: 'ID "' + params.id + '" already exists',
+      message: 'User with ID "' + params.id + '" already exists',
       status: 401,
     };
   }
+}
+
+async function usernameAlredyTaken(params) { //nombre de usuario ya esta en uso
   if (await User.findOne({ username: params.username })) {
     throw {
       message: 'Username "' + params.username + '" is already taken',
       status: 400,
     };
   }
+}
+
+async function emailAlredyInUse(params) { //email ya esta en uso
   if (await User.findOne({ email: params.email })) {
     throw {
       message: 'Email "' + params.email + '" is already in use',
       status: 406,
     };
   }
+}
 
-  const user = new User(params);
-
-  // hash password
+function hashPassword(params, user) { //hash password
   if (params.password) {
     console.log("Creando hash para la contra");
     user.password = bcrypt.hashSync(params.password, 10);
-    //es user.password porque es el atributo de User, antes era hash porque se colocaba hash
   }
+}
 
+//falta verficar que el usuario no pueda sacar cita si hay periodo de vacaciones
+async function create(params) {
+  // validate
+  await userAlredyExists(params);
+
+  await usernameAlredyTaken(params);
+
+  await emailAlredyInUse(params);
+
+  const user = new User(params);
+
+  hashPassword(params, user);
   // save user
   await user.save();
 }
 
 async function update(id, params) {
   const user = await User.findOne({ id: id });
-  console.log("🚀 ~ update ~ user:", user);
-
   // validate
   if (!user) throw "User not found";
-  if (
-    user.username !== params.username &&
-    (await User.findOne({ username: params.username }))
-  ) {
-    throw 'Username "' + params.username + '" is already taken';
-  }
 
-  // hash password if it was entered
-  if (params.password) {
-    params.password = bcrypt.hashSync(params.password, 10);
-  }
+  await usernameAlredyTaken(params);
+
+  hashPassword(params,params);
 
   // copy params properties to user
   Object.assign(user, params);
-
   await user.save();
 }
 
 async function _delete(id) {
-  await User.findOneAndDelete({id: id});
+  const user = await User.findOne({ id: id });
+  if (!user) {
+    throw "The user with ID entered does not exist in the database";
+  } else {
+    await User.findOneAndDelete({ id: id });
+  }
 }

@@ -6,6 +6,7 @@ import { db } from "helpers/api";
 const { serverRuntimeConfig } = getConfig();
 const Date = db.Date;
 const User = db.User;
+const Vacation = db.Vacation;
 
 export const datesRepo = {
   getAll,
@@ -23,7 +24,7 @@ async function getById(id) {
   return await Date.findById(id);
 }
 
-async function unregisteredUser(params) { //revisa si el user existe
+async function unregisteredUser(params) {//revisa si el user existe
   if (!(await User.findOne({ id: params.userId }))) {
     throw {
       message: "The user with id " + params.userId + " is not registered",
@@ -32,17 +33,26 @@ async function unregisteredUser(params) { //revisa si el user existe
   }
 }
 
-function searchDates(params, dates) { //busca ya existes una feha y hora igual
+function searchDates(params, dates) {//busca si ya existe una feha y hora igual
   for (const dateAux of dates) {
-    if (dateAux.date === params.date && dateAux.hour === params.hour) {
-      console.log("entrea date?");
+    console.log(
+      "🚀 ~ searchDates ~ dateAuxfdgvfdvfdvd:",
+      dateAux.date,
+      params.date,
+      dateAux.hour,
+      params.hour
+    );
+
+    if (dateAux.date === params.date && dateAux.hour == params.hour) {
+      //doble igual porque no ocupo que verifique que son del mismo tipo
+      console.log("entrea dateddddddddddddd?");
       return true;
     }
   }
   return false;
 }
 
-function appointmentAlredyExists(params, dates) { //verfica si ya la existía
+function appointmentAlredyExists(params, dates) { //verfica si ya la existía una cita
   if (dates.length !== 0) {
     if (searchDates(params, dates) === true) {
       throw {
@@ -53,6 +63,28 @@ function appointmentAlredyExists(params, dates) { //verfica si ya la existía
   }
 }
 
+//revisa si la cita esta dentro de un rango de vacaciones
+function dateOnVacationRange(params, vacations){
+
+  for (const vacationsAux of vacations) {
+      if(params.date >= vacationsAux.startDate && params.date <= vacationsAux.finishDate){
+        throw {
+          message:
+            "It is possible for us to schedule an appointment on the date " +
+            params.date +
+            " because there are vacations from " +
+            vacationsAux.startDate +
+            " to " +
+            vacationsAux.finishDate,
+          status: 401,
+        };
+      }
+  }
+
+}
+
+
+//falta verficar que el usuario no pueda sacar cita si hay periodo de vacaciones
 async function create(params) {
   // validate
   await unregisteredUser(params);
@@ -61,6 +93,9 @@ async function create(params) {
   console.log("🚀 ~ create ~ dates:", dates);
 
   appointmentAlredyExists(params, dates);
+
+  let vacations = await Vacation.find();
+  dateOnVacationRange(params,vacations)
 
   const date = new Date(params);
 
@@ -71,12 +106,12 @@ async function update(id, params) {
   console.log("juaauuauauauauau");
   const date = await Date.findById(id);
   console.log("🚀 ~ update ~ date:", date);
-  
+
   // validate
   if (!date) throw "Date not found";
 
   unregisteredUser(params);
-  
+
   //Busca todas las fechas que no tengan ese userId
   let dates = await Date.find({ userId: { $ne: params.userId } });
 
@@ -89,5 +124,9 @@ async function update(id, params) {
 }
 
 async function _delete(id) {
-  await Date.findByIdAndDelete(id);
+  try {
+    await Date.findByIdAndDelete(id);
+  } catch (error) {
+    throw "The ID entered does not exist in the database";
+  }
 }

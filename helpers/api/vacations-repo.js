@@ -13,7 +13,7 @@ export const vacationsRepo = {
   getById,
   create,
   update,
-  //   delete: _delete,
+  delete: _delete,
 };
 
 async function getAll() {
@@ -24,7 +24,8 @@ async function getById(id) {
   return await Vacation.findById(id);
 }
 
-async function unregisteredUser(params) {  //revisa si el user existe
+async function unregisteredUser(params) {
+  //revisa si el user esta registrado
   if (!(await User.findOne({ id: params.userId }))) {
     throw {
       message: "The user with id " + params.userId + " is not registered",
@@ -33,8 +34,7 @@ async function unregisteredUser(params) {  //revisa si el user existe
   }
 }
 
-function dateOnVacationRange(params, dates) { //revisa si en el rango de vacaciones hay una cita
-  
+function dateOnVacationRange(params, dates) { //revisa si en el rango de vacaciones hay una cit
   for (const datesAux of dates) {
     if (
       datesAux.date >= params.startDate &&
@@ -55,12 +55,7 @@ function dateOnVacationRange(params, dates) { //revisa si en el rango de vacacio
   }
 }
 
-async function saveVacation(params) {
-  const vacation = new Vacation(params);
-  await vacation.save();
-}
-
-async function haveVacationsInRange(params, vacations) {
+async function haveVacationsInRange(params, vacations) { //revisa si puede sacar vacaciones en ese rango
   for (const vacationsAux of vacations) {
     if (
       (params.startDate > vacationsAux.finishDate &&
@@ -68,31 +63,37 @@ async function haveVacationsInRange(params, vacations) {
       (params.startDate < vacationsAux.satartDate &&
         params.finishDate < vacationsAux.startDate)
     ) {
-        saveVacation(params);
+      saveVacation(params);
+      return true;
     } else {
       throw {
-        message: "Ya tienes vacaciones en ese periodo",
+        message: "You already have vacations in that period",
         status: 401,
       };
     }
   }
+  return false;
+}
+
+async function saveVacation(params) {
+  const vacation = new Vacation(params);
+  await vacation.save();
 }
 
 async function create(params) {
   // validate
-  //revisa si el usuario esta registrado
   await unregisteredUser(params);
 
   if (params.startDate < params.finishDate) {
     let dates = await Date.find();
-    //revisa si hay una cita en el rango de vacaoions
+
     dateOnVacationRange(params, dates);
 
     let vacations = await Vacation.find({ userId: params.userId });
-    //revisa si puede sacar vacaciones en ese rango
-    await haveVacationsInRange(params, vacations);
 
-    await saveVacation(params);
+    if (!(await haveVacationsInRange(params, vacations))) {
+      await saveVacation(params);
+    }
   } else {
     throw {
       message: "Start date is greater than end date",
@@ -108,15 +109,10 @@ async function update(id, params) {
   if (!vacation) throw "Vacation not found";
 
   if (params.startDate < params.finishDate) {
-    unregisteredUser(params);
+    await unregisteredUser(params);
 
     let dates = await Date.find();
     dateOnVacationRange(params, dates);
-
-    //  let vacations = await Vacation.find({ userId: params.userId });
-    //  let aux = "";
-    //  console.log("kjsnvsbfdvbfdb")
-    //  haveVacationsInRange(params, vacations, aux, vacation);
 
     // copy params properties to user
     Object.assign(vacation, params);
@@ -126,5 +122,13 @@ async function update(id, params) {
       message: "Start date is greater than end date",
       status: 401,
     };
+  }
+}
+
+async function _delete(id) {
+  try {
+    await Vacation.findByIdAndDelete(id);
+  } catch (error) {
+    throw "The ID entered does not exist in the database";
   }
 }

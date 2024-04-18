@@ -23,6 +23,7 @@ async function update(req, res) {
 }
 
 async function _delete(req, res) {
+  console.log("lolalolaloal")
   await vacationsRepo.delete(req.query.id);
   return res.status(200).json({ message: "vacation deleted" });
 }

@@ -67,7 +67,7 @@ function dateModel() {
           `${props.value} is not a valid date format (YYYY-MM-DD)!`,
       },
     },
-    hour: { type: String, required: true },
+    hour: { type: Number, required: true, min:0,  max: 24 },
     userId: { type: Number, ref: "users", required: true },
     description: { type: String, required: false },
     state: {
