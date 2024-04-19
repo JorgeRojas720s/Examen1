@@ -77,7 +77,6 @@ function hashPassword(params, user) { //hash password
   }
 }
 
-//falta verficar que el usuario no pueda sacar cita si hay periodo de vacaciones
 async function create(params) {
   // validate
   await userAlredyExists(params);

@@ -63,11 +63,12 @@ function appointmentAlredyExists(params, dates) { //verfica si ya la existía un
   }
 }
 
-//revisa si la cita esta dentro de un rango de vacaciones
-function dateOnVacationRange(params, vacations){
+
+function dateOnVacationRange(params, vacations){ //revisa si la cita esta dentro de un rango de vacaciones
 
   for (const vacationsAux of vacations) {
-      if(params.date >= vacationsAux.startDate && params.date <= vacationsAux.finishDate){
+      if(params.date >= vacationsAux.startDate && params.date <= vacationsAux.finishDate 
+        && vacationsAux.state !== "rechazado"){
         throw {
           message:
             "It is possible for us to schedule an appointment on the date " +
@@ -83,14 +84,11 @@ function dateOnVacationRange(params, vacations){
 
 }
 
-
-//falta verficar que el usuario no pueda sacar cita si hay periodo de vacaciones
 async function create(params) {
   // validate
   await unregisteredUser(params);
 
   let dates = await Date.find();
-  console.log("🚀 ~ create ~ dates:", dates);
 
   appointmentAlredyExists(params, dates);
 
@@ -116,6 +114,9 @@ async function update(id, params) {
   let dates = await Date.find({ userId: { $ne: params.userId } });
 
   appointmentAlredyExists(params, dates);
+
+  let vacations = await Vacation.find();
+  dateOnVacationRange(params,vacations);
 
   // copy params properties to user
   Object.assign(date, params);
